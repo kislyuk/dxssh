@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# DNAnexus Execution Environment MOTD generator
+#
+# Copyright (C) 2013-2014 DNAnexus, Inc.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+#   use this file except in compliance with the License. You may obtain a copy
+#   of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#   License for the specific language governing permissions and limitations
+#   under the License.
+#
+
+GREEN=$'\e[32;01m'
+YELLOW=$'\e[33;01m'
+RED=$'\e[31;01m'
+CYAN=$'\e[36;01m'
+WHITE=$'\e[37;01m'
+UNDERLINE=$'\e[4;01m'
+BOLD=$'\e[1;01m'
+NORMAL=$'\e[0m'
+
+echo
+echo Welcome to ${BOLD}${WHITE}DNAne${CYAN}x${WHITE}us${NORMAL}!
+echo
+
+. /etc/profile.d/dnanexus.environment
+. /home/dnanexus/environment
+echo "This is the DNAnexus Execution Environment, running ${BOLD}${UNDERLINE}${DX_JOB_ID}${NORMAL}."
+
+JOB_DESC="$(dx describe $DX_JOB_ID --json)"
+
+get_job_field() {
+    echo "$(echo $JOB_DESC | jq --raw-output .$1)"
+}
+
+PROJ_DESC="$(dx describe $(get_job_field project) --json)"
+
+get_proj_field() {
+    echo "$(echo $PROJ_DESC | jq --raw-output .$1)"
+}
+
+echo "Job: ${BOLD}$(get_job_field name)${NORMAL}"
+echo "App: ${BOLD}$(get_job_field executableName):$(get_job_field function)${NORMAL}"
+echo "Instance type: $(get_job_field instanceType)"
+echo "Project: $(get_proj_field name) ($(get_job_field project))"
+echo "Workspace: $(get_job_field workspace)"
+echo "Running since: $(get_job_field startedRunning)"
+
+echo "The public address of this instance is ${BOLD}$(get_job_field host)${NORMAL}".
+
+#if [[ ! -z $TMUX ]]; then
+    echo "You are running ${BOLD}byobu${NORMAL}, a terminal session manager."
+    echo "If you get disconnected from this instance, you can log in again and your work will be saved as long as the job is running."
+    echo "For more information on byobu, press ${BOLD}F1${NORMAL}."
+    echo "The job is running in terminal 1. To switch to it, use the ${BOLD}F4${NORMAL} key (press ${BOLD}F4${NORMAL} again to switch back to this terminal)."
+    echo "From this window, you can use the DNAnexus API with ${BOLD}dx${NORMAL}, monitor processes on the worker with ${BOLD}htop${NORMAL}, or install packages with ${BOLD}apt-get install${NORMAL}."
+#fi
+
+# If job has crashed:
+# "${BOLD}${RED}Job job-xxxx (desc) has crashed.${NORMAL}"
+# ${RED}parse app error json, ...${NORMAL}
+
+[ -r /etc/lsb-release ] && . /etc/lsb-release
+
+if [ -z "$DISTRIB_DESCRIPTION" ] && [ -x /usr/bin/lsb_release ]; then
+        # Fall back to using the very slow lsb_release utility
+        DISTRIB_DESCRIPTION=$(lsb_release -s -d)
+fi
+
+printf "OS version: %s (%s %s %s)\n" "$DISTRIB_DESCRIPTION" "$(uname -o)" "$(uname -r)" "$(uname -m)"
+
+#byobu new-session -n "Job window" -d 'echo This is the job window' \; split-window -d \; attach
