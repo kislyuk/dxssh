@@ -53,6 +53,7 @@ dx-prepare-exec-env
 
 # Start sshd only if the host keys are present (created by dx-prepare-exec-env via "dpkg-reconfigure openssh-server")
 if [[ -e /etc/ssh/ssh_host_dsa_key ]]; then
+    echo "TEST" > /T
     start-stop-daemon --start --pidfile /var/run/sshd.pid --exec /usr/sbin/sshd
     export HOME=/root TERM=xterm
     byobu new-session -n "${DX_JOB_ID:-unknown_dx_job}" "export HOME=/home/dnanexus; bash -c '$1' > >(tee dx_stdout) 2> >(tee dx_stderr >&2); echo \$? > /home/dnanexus/exit_code"
