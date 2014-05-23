@@ -58,7 +58,7 @@ if [[ -e /etc/ssh/ssh_host_dsa_key ]]; then
     echo "TEST" > /T2
     export HOME=/root TERM=xterm
     echo "TEST" > /T3
-    byobu new-session -n "${DX_JOB_ID:-unknown_dx_job}" "export HOME=/home/dnanexus; bash -c '$1' > >(tee dx_stdout) 2> >(tee dx_stderr >&2); echo \$? > /home/dnanexus/exit_code" >/T4
+    byobu new-session -n "${DX_JOB_ID:-unknown_dx_job}" "echo WORKING > /T3A; export HOME=/home/dnanexus; bash -c '$1' > >(tee dx_stdout) 2> >(tee dx_stderr >&2); echo \$? > /home/dnanexus/exit_code" >/T4
 #    byobu new-session -s DNAnexusEE -n "${DX_JOB_ID:-unknown_dx_job}" "export HOME=/home/dnanexus; bash -c '$1'; echo \$? > /home/dnanexus/exit_code"
     echo "TEST" > /T5
     exit $(cat /home/dnanexus/exit_code 2>/dev/null || echo 1)
