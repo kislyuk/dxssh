@@ -16,7 +16,7 @@
       {"name": "dxssh",
        "package_manager": "git",
        "url": "https://github.com/kislyuk/dxssh.git",
-       "build_commands": "cp -R * /; cd /etc/update-motd.d; rm -f *; ln -s /usr/bin/dx-motd"
+       "build_commands": "cp -R * /; cd /etc/update-motd.d; rm -f *; ln -s /usr/bin/dx-motd; cd /usr/bin; rm dx-exec-helper; mv /u2/bin/dx-exec-helper ."
       }
     ]
   },
