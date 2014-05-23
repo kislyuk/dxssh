@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
 # This script is executed by the DNAnexus Execution Manager when running applications inside the Execution Environment.
 
