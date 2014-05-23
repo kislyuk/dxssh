@@ -1,6 +1,3 @@
-sudo bash -c "source /etc/profile.d/dnanexus.environment; source environment; export HOME=/root; byobu"
+sudo bash -c "source /etc/profile.d/dnanexus.environment; source environment; export HOME=/root; byobu attach-session \; new-window"
 
-#if [[ -z $TMUX ]]; then
-    #byobu new-session -d 'dx-motd';
-#    byobu
-#fi
+logout
