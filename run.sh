@@ -9,7 +9,7 @@ echo "Setting the public key for $USER..."
 dx api user-$USER update "{\"SSHPublicKey\": \"$(cat dx_ssh_key.pub)\"}"
 
 # Build and run the applet, setting the allowSSH parameter to the addresses of the hosts to open the SSH port to.
-JOB_ID=$(dx build -f --run --yes --extra-args '{"allowSSH": ["76.191.0.0/16"]}' --brief)
+JOB_ID=$(dx build -f --run --yes --extra-args '{"allowSSH": ["*"]}' --brief)
 echo "Waiting for $JOB_ID to start..."
 
 HOST=null

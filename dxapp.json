@@ -12,6 +12,7 @@
     "file": "src/dx-ssh-demo.sh",
     "execDepends": [
       {"name": "htop"},
+      {"name": "byobu"},
       {"name": "dxssh",
        "package_manager": "git",
        "url": "https://github.com/kislyuk/dxssh.git",

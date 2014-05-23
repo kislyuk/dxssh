@@ -1,0 +1,62 @@
+#!/bin/bash -e
+
+# This script is executed by the DNAnexus Execution Manager when running applications inside the Execution Environment.
+
+# The following two files are normally used by pam_env to set essential environment variables during the authentication
+# process. We source them instead.
+set -a
+source /etc/environment
+source /etc/default/locale
+set +a
+
+source /etc/profile
+
+shopt -s nullglob
+
+dhclient
+
+if [[ -e /etc/profile.d/dnanexus.environment ]]; then
+    source /etc/profile.d/dnanexus.environment
+fi
+
+for i in /etc/dnanexus-env.d/*; do
+    source $i
+done
+
+[[ -e dx_stdout ]] || mkfifo dx_stdout 
+[[ -e dx_stderr ]] || mkfifo dx_stderr
+
+dx-log-stream < dx_stdout &
+HELPER1_PID=$!
+dx-log-stream -l error < dx_stderr &
+HELPER2_PID=$!
+
+stop_helpers() {
+    set +e
+    wait $HELPER1_PID
+    wait $HELPER2_PID
+    pkill dhclient
+    pkill -f 'python /usr/bin/dstat'
+    pkill -f '/usr/sbin/sshd'
+}
+
+trap stop_helpers EXIT
+
+if $(dx-log-stream --help|grep -q source) && type -p dstat >/dev/null && [[ -z "$NO_DSTAT" ]] && ! [[ -f /no_dstat ]]; then
+    DSTAT_INTERVAL=${DSTAT_INTERVAL:-600}
+    NUM_CPUS="$(grep -c processor /proc/cpuinfo)"
+    TOTAL_MEM_MB="$(($(grep MemTotal /proc/meminfo | grep --only-matching '[0-9]*')/1024))"
+    dstat --nocolor --noheaders --noupdate --cpu --disk --mem --net --freespace --output /dev/stderr $DSTAT_INTERVAL 2>&1 1>/dev/null | perl -ne '$n++; next if $n < 8; $|=1; @l=split /,/; print "CPU: ".sprintf("%.0f", $l[0])."% ('$NUM_CPUS' cores) * Memory: ".sprintf("%.0f", $l[8]/(1024*1024))."/'$TOTAL_MEM_MB'MB * Storage: ".sprintf("%.0f", $l[15]/(1024*1024*1024))."GB free\n"' | dx-log-stream -s DX_APP &
+fi
+
+dx-prepare-exec-env
+
+# Start sshd only if the host keys are present (created by dx-prepare-exec-env via "dpkg-reconfigure openssh-server")
+if [[ -e /etc/ssh/ssh_host_dsa_key ]]; then
+    start-stop-daemon --start --pidfile /var/run/sshd.pid --exec /usr/sbin/sshd
+    export HOME=/root TERM=xterm
+    byobu new-session -n "${DX_JOB_ID:-unknown_dx_job}" "export HOME=/home/dnanexus; bash -c '$1' > >(tee dx_stdout) 2> >(tee dx_stderr >&2); echo \$? > /home/dnanexus/exit_code"
+    exit $(cat /home/dnanexus/exit_code 2>/dev/null || echo 1)
+else
+    bash -c "$@" > dx_stdout 2> dx_stderr
+fi
