@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
 # This script is executed by the DNAnexus Execution Manager when running applications inside the Execution Environment.
 
@@ -23,18 +23,8 @@ for i in /etc/dnanexus-env.d/*; do
     source $i
 done
 
-[[ -e dx_stdout ]] || mkfifo dx_stdout 
-[[ -e dx_stderr ]] || mkfifo dx_stderr
-
-dx-log-stream < dx_stdout &
-HELPER1_PID=$!
-dx-log-stream -l error < dx_stderr &
-HELPER2_PID=$!
-
 stop_helpers() {
     set +e
-    wait $HELPER1_PID
-    wait $HELPER2_PID
     pkill dhclient
     pkill -f 'python /usr/bin/dstat'
     pkill -f '/usr/sbin/sshd'
@@ -42,7 +32,7 @@ stop_helpers() {
 
 trap stop_helpers EXIT
 
-if $(dx-log-stream --help|grep -q source) && type -p dstat >/dev/null && [[ -z "$NO_DSTAT" ]] && ! [[ -f /no_dstat ]]; then
+if type -p dstat >/dev/null && [[ -z "$NO_DSTAT" ]] && ! [[ -f /no_dstat ]]; then
     DSTAT_INTERVAL=${DSTAT_INTERVAL:-600}
     NUM_CPUS="$(grep -c processor /proc/cpuinfo)"
     TOTAL_MEM_MB="$(($(grep MemTotal /proc/meminfo | grep --only-matching '[0-9]*')/1024))"
@@ -52,16 +42,13 @@ fi
 dx-prepare-exec-env
 
 # Start sshd only if the host keys are present (created by dx-prepare-exec-env via "dpkg-reconfigure openssh-server")
-if [[ -e /etc/ssh/ssh_host_dsa_key ]]; then
-    echo "TEST" > /T
-    start-stop-daemon --start --pidfile /var/run/sshd.pid --exec /usr/sbin/sshd
-    echo "TEST" > /T2
-    export HOME=/root TERM=xterm
-    echo "TEST" > /T3
-    byobu new-session -n "${DX_JOB_ID:-unknown_dx_job}" "echo WORKING > /T3A; export HOME=/home/dnanexus; bash -c '$1' > >(tee dx_stdout) 2> >(tee dx_stderr >&2); echo \$? > /home/dnanexus/exit_code" >/T4
-#    byobu new-session -s DNAnexusEE -n "${DX_JOB_ID:-unknown_dx_job}" "export HOME=/home/dnanexus; bash -c '$1'; echo \$? > /home/dnanexus/exit_code"
-    echo "TEST" > /T5
-    exit $(cat /home/dnanexus/exit_code 2>/dev/null || echo 1)
-else
-    bash -c "$@" > dx_stdout 2> dx_stderr
+if [[ -e /etc/ssh/ssh_host_rsa_key ]]; then
+    dx set_properties "$DX_JOB_ID" ssh_host_rsa_key="$(ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key.pub | cut -f 2 -d ' ')"
+
+    start-stop-daemon --start --pidfile /var/run/rsyslogd.pid --exec /usr/sbin/rsyslogd &
+    start-stop-daemon --start --pidfile /var/run/sshd.pid --exec /usr/sbin/sshd &
 fi
+
+for cmd in "$@"; do
+    bash -c "$cmd" > >(tee -a dx_stdout > >(dx-log-stream)) 2> >(tee -a dx_stderr > >(dx-log-stream -l error))
+done
