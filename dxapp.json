@@ -16,7 +16,7 @@
       {"name": "dxssh",
        "package_manager": "git",
        "url": "https://github.com/kislyuk/dxssh.git",
-       "build_commands": "cp -R * /"
+       "build_commands": "cp -R * /; mv /dx-exec-helper /usr/bin/"
       }
     ]
   },
